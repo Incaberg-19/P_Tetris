@@ -3,29 +3,18 @@ import sys
 from backend import *
 from frontend import *
 
-class Main(GameInfo):  
+class Main:  
     def __init__(self):  
-        pygame.init()  
-        self.screen = pygame.display.set_mode(GameInfo.gameResolution)  
-        self.grid = [
-            pygame.Rect (
-                x * GameInfo.rectSize,
-                y * GameInfo.rectSize,
-                GameInfo.rectSize,
-                GameInfo.rectSize
-            )
-            for x in range(GameInfo.rectWidth)
-            for y in range(GameInfo.rectHeight)
-        ]
-        self.clock = pygame.time.Clock()
-    
-    def game_loop(self):  
         self.model=GameModel()
         self.control=GameController(self.model)
+        self.clock = pygame.time.Clock()
+    
+    def game_loop(self):
         while self.control.states["QUIT"]==0:  
-            currentFigure=self.control.processInput(pygame.event.get())
-            printObjects(self.screen,self.grid,currentFigure)
-            self.clock.tick(GameInfo.FPS)
+            currentFigure,gameField=self.control.processInput(pygame.event.get())
+            printObjects(self.model.screen,self.model.grid,currentFigure,gameField)
+            self.clock.tick(self.model.FPS)
+            # self.control.printStates()
         pygame.quit()  
         sys.exit()  
   
