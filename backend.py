@@ -78,6 +78,7 @@ class FiniteStateMachine:
             "GAMEOVER": 0,  
             "QUIT": 0,
             "PAUSE": 0,  
+            "ACTION": 0,
         }  
         self.timer=0
         self.currentFigure=0
@@ -95,13 +96,21 @@ class FiniteStateMachine:
             self.handleStop(event)
             self.handleStart(event)
             self.handleMovement(event)
-            self.handleAttaching(event)
-            # if checkBorders(self.currentFigure,self.gameField,0,45)==False:
-            #     self.states["ATTACHING"]=1
+            self.handleAction(event)
         self.handleTimer()
         self.handleAttaching(events)
         return self.currentFigure,self.gameField
-            
+    
+    def handleAction(self,event):
+        if self.states["MOVING"]==1:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    self.states["ACTION"]=1
+        
+        if self.states["ACTION"]==1:
+            rotateFigure(self.currentFigure,self.gameField,self.model.rectSize)
+            self.states["ACTION"]=0
+                
     def handleStop(self,event):
         if event.type == pygame.QUIT:
             self.states["QUIT"] = 1
@@ -154,7 +163,7 @@ class FiniteStateMachine:
     def handleTimer(self):
         if self.states["MOVING"] == 1:  
             self.timer+=1
-            if checkBorders(self.currentFigure,self.gameField,0,45)==False:
+            if checkBorders(self.currentFigure,self.gameField,0,45,"MOVING")==False:
                 self.states["ATTACHING"]=1
                 self.timer=0
             elif(self.timer>50):
@@ -172,19 +181,43 @@ class FiniteStateMachine:
     def printStates(self):  
         print(self.states)  
 
+def rotateFigure(currentFigure,gameField,rectSize):
+    # currentFigure[0] - center coordinate, point of rotation
+    checkValue=checkBorders(currentFigure,gameField,0,0,"ACTION")
+    
+    if checkValue==True:
+        for i in range(4):
+            x = currentFigure[i].y - currentFigure[0].y
+            y = currentFigure[i].x - currentFigure[0].x
+            currentFigure[i].x = currentFigure[0].x - (x)
+            currentFigure[i].y = currentFigure[0].y + (y)
 
-def checkBorders(currentFigure,gameField,add_X,add_Y):
+
+def checkBorders(currentFigure,gameField,add_X,add_Y,state):
     checkValue=True
     info=GameInfo()
-    checkFigure=[
-        pygame.Rect(
-            (currentFigure[i].x+add_X),
-            (currentFigure[i].y+add_Y),
-            info.rectSize-1,
-            info.rectSize-1
-        ) 
-        for i in range(4)
-    ]
+    checkFigure=[]
+    if state=="MOVING":
+        checkFigure=[
+            pygame.Rect(
+                (currentFigure[i].x+add_X),
+                (currentFigure[i].y+add_Y),
+                info.rectSize-1,
+                info.rectSize-1
+            ) 
+            for i in range(4)
+        ]
+    elif state=="ACTION":
+        checkFigure=[
+            pygame.Rect(
+                (currentFigure[0].x - (currentFigure[i].y - currentFigure[0].y)),
+                (currentFigure[0].y + (currentFigure[i].x - currentFigure[0].x)),
+                info.rectSize-1,
+                info.rectSize-1
+            ) 
+            for i in range(4)
+        ]
+        
     for i in range(4):
         if (checkFigure[i] in gameField):
             checkValue=False
@@ -192,10 +225,11 @@ def checkBorders(currentFigure,gameField,add_X,add_Y):
             checkValue=False
         if (checkFigure[i].y) > info.rectHeight*info.rectSize-1:
             checkValue=False
+            
     return checkValue
 
 def moveFigure(currentFigure,gameField,add_X,add_Y):
-    checkValue=checkBorders(currentFigure,gameField,add_X,add_Y)
+    checkValue=checkBorders(currentFigure,gameField,add_X,add_Y,"MOVING")
     if checkValue==True:
         for i in range(4):
             currentFigure[i].x+=add_X
