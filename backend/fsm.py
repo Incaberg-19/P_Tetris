@@ -1,7 +1,6 @@
 import pygame
 from .auxToFsm import *
 from enum import Enum
-import sys
 
 class States(Enum):
         START = 0
@@ -17,17 +16,12 @@ class States(Enum):
 class FiniteStateMachine:
 
     def __init__(self):  
-        self.direction=None
         self.state=None 
         self.timer=0
-        self.shiftingTimer=0
-        self.timerShiftingLeft=0
-        self.timerShiftingRight=0
-        self.timerShiftingDown=0
-        self.holdDown=False
-        self.holdDown2=0
-        self.holdLeft=False
-        self.holdRight=False
+        self.holdTimer=0
+        self.holdShiftingTimer=0
+        self.restrictionForShifting=4
+        
         self.index=getRandomIndex()
         self.nextIndex=getRandomIndex(self.index)
         
@@ -46,11 +40,53 @@ class FiniteStateMachine:
             self.handleStop(event)
             self.handleStart(event)
             self.handleSpawn()
-            self.handleMovement(event)
+            self.handleMoving(event)
+            self.handleShifting("INCYCLE")
             self.handleAction(event)
+        self.handleShifting("OUTCYCLE")
         self.handleTimer()
         self.handleAttaching()
         
+    def handleMoving(self,event):
+        if self.state==States.MOVING:
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_LEFT,pygame.K_RIGHT):
+                    self.restrictionForShifting=4
+                elif event.key==pygame.K_DOWN:
+                    self.restrictionForShifting=1
+                self.holdTimer = 0
+            elif event.type == pygame.KEYUP:
+                self.holdTimer = 0
+                
+    def handleShifting(self,state):
+        if self.state==States.MOVING:
+            self.state = States.SHIFTING
+
+        if self.state==States.SHIFTING:
+            pressedKeys=pygame.key.get_pressed()
+
+            if state=="OUTCYCLE":
+                self.holdTimer += 1
+            
+                if self.holdTimer > 12:
+                    if self.holdShiftingTimer>self.restrictionForShifting:
+                        self.ProcessMoveFigure(pressedKeys)
+                        self.holdShiftingTimer=0
+                    else:
+                        self.holdShiftingTimer+=1
+                            
+            elif state=="INCYCLE":
+                self.ProcessMoveFigure(pressedKeys)
+                
+            self.state=States.MOVING
+    
+    def ProcessMoveFigure(self,pressedKeys):
+        if pressedKeys[pygame.K_DOWN]:
+            self.currentFigure=moveFigure(self.currentFigure,self.gameField,0,45,*self.parameters)
+        elif pressedKeys[pygame.K_RIGHT]:
+            self.currentFigure=moveFigure(self.currentFigure,self.gameField,45,0,*self.parameters)
+        elif pressedKeys[pygame.K_LEFT]:
+            self.currentFigure=moveFigure(self.currentFigure,self.gameField,-45,0,*self.parameters)
     
     def handleAction(self,event):
         if self.state==States.MOVING:
@@ -86,20 +122,6 @@ class FiniteStateMachine:
     def handleSpawn(self):
         if self.state==States.SPAWN:
             self.state=States.MOVING
-
-    def handleMovement(self,event):
-        if self.state==States.MOVING:        
-            if event.type == pygame.KEYDOWN:
-                if event.key in (pygame.K_DOWN,pygame.K_LEFT,pygame.K_RIGHT):
-                        self.state = States.SHIFTING
-        if self.state == States.SHIFTING:
-            if event.key==pygame.K_DOWN:
-                self.currentFigure=moveFigure(self.currentFigure,self.gameField,0,45,*self.parameters)
-            elif event.key==pygame.K_LEFT:
-                self.currentFigure=moveFigure(self.currentFigure,self.gameField,-45,0,*self.parameters)
-            elif event.key==pygame.K_RIGHT:
-                self.currentFigure=moveFigure(self.currentFigure,self.gameField,45,0,*self.parameters)
-            self.state=States.MOVING   
     
     def handleTimer(self):
         if self.state==States.MOVING: 
@@ -131,7 +153,4 @@ class FiniteStateMachine:
         self.gameScore=0
         self.gameLevel=1
         self.gameSpeed=50
-    
-    def printState(self):
-        print(self.state)
         

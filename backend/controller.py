@@ -12,7 +12,6 @@ class GameController(FiniteStateMachine):
         while self.state!=States.QUIT: 
             self.handleEvents(pygame.event.get())
             self.view.callAllFront(self.currentFigure,self.gameScore,self.gameLevel,self.model.getCurrentFigure(self.nextIndex))
-            print(self.printState())
             self.clock.tick(self.model.FPS)
         pygame.quit()  
         exit()

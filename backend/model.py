@@ -1,26 +1,31 @@
 import pygame
+from dataclasses import dataclass, field
 
+@dataclass
 class GameInfo:
-    def __init__(self):
-        self.rectWidth = 10  
-        self.rectHeight = 17
-        self.rectSize = 45
-        self.FPS=60
-        self.gameResolution = (self.rectWidth*self.rectSize*2),(self.rectHeight*self.rectSize)
-        self.grid = [
-            pygame.Rect (
-                x * self.rectSize,
-                y * self.rectSize,
-                self.rectSize,
-                self.rectSize
-            )
-            for x in range(self.rectWidth)
-            for y in range(self.rectHeight)
-        ]   
-        self.gameField=[]
-        self.gameScore=0
-        self.gameLevel=1
-        self.gameSpeed=50
+        FPS: int = 60
+        rectWidth: int = 10  
+        rectHeight: int = 17
+        rectSize: int = 45
+        gameField: list = field(default_factory=list)
+        gameScore: int = 0
+        gameLevel: int = 1
+        gameSpeed: int = 50
+        gameResolution: tuple = field(init=False)
+        
+        def __post_init__(self):
+            self.gameResolution: tuple = (self.rectWidth*self.rectSize*2),(self.rectHeight*self.rectSize)
+            self.screen = pygame.display.set_mode(self.gameResolution)  
+            self.grid: list = [
+                pygame.Rect (
+                    x * self.rectSize,
+                    y * self.rectSize,
+                    self.rectSize,
+                    self.rectSize
+                )
+                for x in range(self.rectWidth)
+                for y in range(self.rectHeight)
+            ]   
 
 class FigureModels:
     def __init__(self,rectWidth,rectSize):
@@ -54,4 +59,3 @@ class GameModel(GameInfo, FigureModels):
         GameInfo.__init__(self)
         FigureModels.__init__(self, self.rectWidth, self.rectSize)
         pygame.init()  
-        self.screen = pygame.display.set_mode(self.gameResolution)  

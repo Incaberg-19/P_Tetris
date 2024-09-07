@@ -48,9 +48,9 @@ def checkBorders(currentFigure,gameField,add_X,add_Y,state,*parameters):
     for i in range(4):
         if (checkFigure[i] in gameField):
             checkValue=False
-        if (checkFigure[i].x) < 0 or (checkFigure[i].x) > rectWidth*rectSize-1:
+        if (checkFigure[i].x) < 0 or (checkFigure[i].x) > rectWidth*(rectSize-1):
             checkValue=False
-        if (checkFigure[i].y) > rectHeight*rectSize-1:
+        if (checkFigure[i].y) > rectHeight*(rectSize-1):
             checkValue=False
             
     return checkValue
