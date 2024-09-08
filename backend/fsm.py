@@ -1,27 +1,29 @@
 import pygame
 from .auxToFsm import *
 from enum import Enum
-
-class States(Enum):
+ 
+class State(Enum):
         START = 0
-        SPAWN=1 
+        SPAWN = 1 
         MOVING = 2
         SHIFTING = 3 
         ATTACHING = 4
         GAMEOVER = 5 
-        QUIT = 6
-        PAUSE = 7  
-        ACTION = 8
         
 class FiniteStateMachine:
 
     def __init__(self):  
-        self.state=None 
+        self.indexState=0
+        self.states=list(State)
+        self.quit=False
+        self.pause=False
+        self.lenStatesList=len(self.states)
+        self.state=None
+        
         self.timer=0
         self.holdTimer=0
         self.holdShiftingTimer=0
         self.restrictionForShifting=4
-        
         self.index=getRandomIndex()
         self.nextIndex=getRandomIndex(self.index)
         
@@ -34,21 +36,41 @@ class FiniteStateMachine:
         self.gameLevel=self.model.gameLevel
         self.gameSpeed=self.model.gameSpeed
         self.parameters=(self.rectWidth,self.rectHeight,self.rectSize)
+    
+    def nextState(self) -> None:
+        if (self.indexState+1)!=self.lenStatesList:
+            self.indexState+=1
+            self.state=self.states[self.indexState]
+            
+    def previouslyState(self) -> None:
+        if (self.indexState-1)!=-1:
+            self.indexState-=1
+            self.state=self.states[self.indexState]
+    
+    def checkState(self,wantedState) -> bool:
+        if self.state!=None:
+            return True if self.states[self.indexState]==wantedState else False
+    
+    def resetStateMachine(self):
+        self.indexState=0
+        self.state=self.states[self.indexState]
         
     def handleEvents(self,events):
         for event in events:
             self.handleStop(event)
-            self.handleStart(event)
-            self.handleSpawn()
-            self.handleMoving(event)
-            self.handleShifting("INCYCLE")
-            self.handleAction(event)
-        self.handleShifting("OUTCYCLE")
-        self.handleTimer()
-        self.handleAttaching()
+            if self.pause==False:
+                self.handleStart(event)
+                self.handleSpawn()
+                self.handleMoving(event)
+                self.handleShifting("INCYCLE")
+                self.handleAction(event)
+        if self.pause==False:
+            self.handleShifting("OUTCYCLE")
+            self.handleTimer()
+            self.handleAttaching()
         
     def handleMoving(self,event):
-        if self.state==States.MOVING:
+        if self.checkState(State.MOVING):
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_LEFT,pygame.K_RIGHT):
                     self.restrictionForShifting=4
@@ -59,10 +81,9 @@ class FiniteStateMachine:
                 self.holdTimer = 0
                 
     def handleShifting(self,state):
-        if self.state==States.MOVING:
-            self.state = States.SHIFTING
-
-        if self.state==States.SHIFTING:
+        if self.checkState(State.MOVING):
+            self.nextState()
+        if self.checkState(State.SHIFTING):
             pressedKeys=pygame.key.get_pressed()
 
             if state=="OUTCYCLE":
@@ -77,8 +98,7 @@ class FiniteStateMachine:
                             
             elif state=="INCYCLE":
                 self.ProcessMoveFigure(pressedKeys)
-                
-            self.state=States.MOVING
+            self.previouslyState()
     
     def ProcessMoveFigure(self,pressedKeys):
         if pressedKeys[pygame.K_DOWN]:
@@ -89,53 +109,49 @@ class FiniteStateMachine:
             self.currentFigure=moveFigure(self.currentFigure,self.gameField,-45,0,*self.parameters)
     
     def handleAction(self,event):
-        if self.state==States.MOVING:
+        if self.checkState(State.MOVING) or self.checkState(State.SHIFTING):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    self.state=States.ACTION
-        if self.state==States.ACTION:
-            rotateFigure(self.currentFigure,self.gameField,*self.parameters)
-            self.state=States.MOVING
+                    rotateFigure(self.currentFigure,self.gameField,*self.parameters)
                 
     def handleStop(self,event):
         if event.type == pygame.QUIT:
-            self.state=States.QUIT
+            self.quit=True
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_q:
-                self.state=States.QUIT
+                self.quit=True
             elif event.key == pygame.K_SPACE:
-                if self.state==States.MOVING:
-                    self.state=States.PAUSE
-                elif self.state==States.PAUSE:
-                    self.state=States.MOVING
+                if self.checkState(State.MOVING) or self.checkState(State.ATTACHING):
+                    self.pause=True if self.pause==False else False
                     
     def handleStart(self,event):
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    if self.state==None or self.state==States.GAMEOVER:
-                        self.state=States.START
-                        self.handleRestart()
-            
-            if self.state==States.START:
-                self.state=States.SPAWN
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                if self.state==None or self.checkState(State.GAMEOVER):
+                    self.resetStateMachine()
+                    self.handleRestart()
     
     def handleSpawn(self):
-        if self.state==States.SPAWN:
-            self.state=States.MOVING
+        if self.checkState(State.START):
+            self.nextState()
+        
+        if self.checkState(State.SPAWN):
+            self.nextState()
     
     def handleTimer(self):
-        if self.state==States.MOVING: 
+        if self.checkState(State.MOVING):
             if checkBorders(self.currentFigure,self.gameField,0,45,"MOVING",*self.parameters)==False:
-                self.state=States.ATTACHING
+                self.nextState()
+                self.nextState()
         
-        if self.state==States.MOVING: 
+        if self.checkState(State.MOVING):
             self.timer+=1
             if self.timer>self.gameSpeed:
                 self.timer=0
                 self.currentFigure=moveFigure(self.currentFigure,self.gameField,0,45,*self.parameters) 
     
     def handleAttaching(self):
-        if self.state==States.ATTACHING:
+        if self.checkState(State.ATTACHING):
             self.gameField=saveFigure(self.currentFigure,self.gameField,self.rectSize)
             self.gameScore,self.gameLevel,self.gameSpeed=countGameScore(self.gameField,self.rectSize,self.gameScore,self.gameLevel,self.gameSpeed)
 
@@ -143,9 +159,9 @@ class FiniteStateMachine:
             self.nextIndex=getRandomIndex(self.index)
             self.currentFigure=self.model.getCurrentFigure(self.index)
             if checkBorders(self.currentFigure,self.gameField,0,45,"MOVING",*self.parameters)==False:
-                self.state=States.GAMEOVER
+                self.nextState()
             else:
-                self.state=States.SPAWN
+                self.resetStateMachine()
                 self.handleSpawn()
     
     def handleRestart(self):

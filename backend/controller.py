@@ -9,7 +9,7 @@ class GameController(FiniteStateMachine):
         self.clock = pygame.time.Clock()
     
     def gameLoop(self):
-        while self.state!=States.QUIT: 
+        while self.quit!=True: 
             self.handleEvents(pygame.event.get())
             self.view.callAllFront(self.currentFigure,self.gameScore,self.gameLevel,self.model.getCurrentFigure(self.nextIndex))
             self.clock.tick(self.model.FPS)
